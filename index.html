@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>相册式图片裁剪工具</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- 主容器 -->
+    <div class="app-container">
+        <!-- 标题 -->
+        <header class="app-header">
+            <h1>相册式图片裁剪工具</h1>
+            <div class="progress-indicator">
+                <span id="progress">0/25</span>
+            </div>
+        </header>
+
+        <!-- 上传区域 -->
+        <section id="upload-section" class="section active">
+            <div class="section-header">
+                <h2>上传图片</h2>
+                <p class="subtitle">请上传25张图片（已上传 <span id="uploaded-count">0</span>/25）</p>
+            </div>
+            
+            <!-- 上传按钮 -->
+            <div class="upload-area" id="upload-btn">
+                <i class="fas fa-camera"></i>
+                <p>点击选择图片</p>
+                <p class="hint">支持多选，可分批上传</p>
+                <div class="upload-tips">
+                    <p><strong>重要提示：</strong>按顺序上传图片</p>
+                    <p>第一、二张图为封面/封底 (比例 30×68)</p>
+                    <p>剩余二十三张图为内页 (比例 30×42)</p>
+                </div>
+                <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
+            </div>
+
+            <!-- 待处理图片区 -->
+            <div class="images-section">
+                <h3>待处理区</h3>
+                <div class="images-container" id="pending-images">
+                    <p class="empty-hint">暂无图片，请先上传</p>
+                </div>
+            </div>
+
+            <!-- 下一步按钮 -->
+            <button id="next-btn" class="btn primary-btn" disabled>
+                开始裁剪（需要上传25张）
+            </button>
+        </section>
+
+        <!-- 裁剪区域 -->
+        <section id="crop-section" class="section">
+            <div class="section-header">
+                <h2>图片裁剪</h2>
+                <p class="subtitle" id="current-process-text">当前处理封面</p>
+            </div>
+
+            <!-- 裁剪预览区 -->
+            <div class="crop-preview">
+                <div class="crop-container">
+                    <canvas id="crop-canvas"></canvas>
+                    <div class="crop-overlay">
+                        <div class="crop-box" id="crop-box">
+                            <!-- 裁剪框将通过CSS绘制 -->
+                        </div>
+                        <div class="crop-instruction">
+                            <i class="fas fa-hand-point-up"></i>
+                            <p>双指缩放 | 单指拖动 | 双击重置</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 裁剪框比例提示 -->
+            <div class="crop-info">
+                <div class="ratio-info">
+                    <span id="current-ratio">当前比例：680×300 (封面/封底)</span>
+                    <span id="remaining-count">剩余：23张使用420×300 (内容图)</span>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="action-buttons">
+                <button id="prev-btn" class="btn secondary-btn">
+                    <i class="fas fa-arrow-left"></i> 重新裁剪上一张
+                </button>
+                <button id="process-btn" class="btn primary-btn">
+                    <i class="fas fa-check"></i> 确认裁剪并继续
+                </button>
+            </div>
+
+            <!-- 已处理图片区 -->
+            <div class="images-section">
+                <h3>已处理区</h3>
+                <div class="images-container" id="processed-images">
+                    <p class="empty-hint">暂无已处理的图片</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 完成区域 -->
+        <section id="complete-section" class="section">
+            <div class="complete-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="complete-message">
+                <h2>处理完成！</h2>
+                <p>所有25张图片已裁剪完成</p>
+            </div>
+            
+            <div class="images-section">
+                <h3>最终结果</h3>
+                <div class="images-container" id="final-images">
+                    <!-- 最终图片将在这里显示 -->
+                </div>
+            </div>
+
+            <!-- 输入框和保存按钮 -->
+            <div class="upload-area" style="margin-top: 20px; padding: 20px;">
+                <label for="user-input" style="display: block; margin-bottom: 10px; font-weight: 500;">
+                    已裁剪完所有图片，请输入收款人姓名以及和客服约定的发货日期，例:张三20260101
+                </label>
+                <input type="text" id="user-input" class="user-input-field" 
+                       placeholder="例如: 张三20260101" value="">
+                <button id="save-zip-btn" class="btn primary-btn" style="margin-top: 15px;">
+                    <i class="fas fa-download"></i> 生成ZIP并保存到本地
+                </button>
+                <p style="color: #666; margin-top: 10px; font-size: 0.9rem;">
+                    点击后ZIP文件将下载到您的电脑，然后影刀RPA会自动发送到管理员微信。
+                </p>
+            </div>
+
+            <!-- 重新开始按钮 -->
+            <button id="restart-btn" class="btn secondary-btn">
+                <i class="fas fa-redo"></i> 重新开始
+            </button>
+        </section>
+    </div>
+
+    <!-- 加载遮罩 -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>正在处理中...</p>
+    </div>
+
+    <!-- 引入JSZip库 (FileSaver.js不再需要，但保留无妨) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
